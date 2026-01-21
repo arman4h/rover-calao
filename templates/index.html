@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rover Controller</title>
+  <style>
+    /* Reset & basic styles */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; color: #333; text-align: center; padding: 20px; }
+    h2 { margin-bottom: 20px; color: #222; }
+
+    /* Connection section */
+    #connect-div { margin-bottom: 20px; }
+    input { padding: 10px; margin: 5px; width: 45%; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+    #connect-btn { padding: 10px 20px; font-size: 16px; border-radius: 8px; border: none; background: #4CAF50; color: white; cursor: pointer; transition: background 0.3s; }
+    #connect-btn:hover { background: #45a049; }
+    #status { margin-top: 10px; font-weight: bold; }
+
+    /* Buttons layout */
+    #buttons { display: flex; flex-direction: column; align-items: center; margin-top: 20px; }
+    .row { display: flex; justify-content: center; margin: 5px 0; }
+    button { margin: 5px; padding: 15px 25px; font-size: 18px; border-radius: 50%; border: none; background: #2196F3; color: white; cursor: pointer; transition: background 0.2s, transform 0.1s; }
+    button:hover { background: #1976D2; transform: scale(1.1); }
+    button:disabled { background: #aaa; cursor: not-allowed; transform: none; }
+
+    /* Special buttons */
+    #stop-btn { background: #f44336; }
+    #stop-btn:hover { background: #d32f2f; }
+    #round-btn { width: 150px; border-radius: 12px; background: #FF9800; }
+    #round-btn:hover { background: #FB8C00; }
+
+    /* Responsive adjustments */
+    @media (max-width: 480px) {
+      input { width: 90%; }
+      button { padding: 12px 20px; font-size: 16px; }
+      #round-btn { width: 120px; font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Rover Controller</h2>
+
+  <!-- Connection -->
+  <div id="connect-div">
+    <input id="host" placeholder="ROS Host IP">
+    <input id="port" placeholder="Port" value="9090">
+    <button id="connect-btn" onclick="connect()">Connect</button>
+    <p id="status">Not connected</p>
+  </div>
+
+  <hr>
+
+  <!-- Control Buttons -->
+  <div id="buttons">
+    <div class="row">
+      <button onclick="move(0,2)" id="left-btn" disabled>←</button>
+    </div>
+    <div class="row">
+      <button onclick="move(2,0)" id="up-btn" disabled>↑</button>
+      <button onclick="stop()" id="stop-btn" disabled>■</button>
+      <button onclick="move(0,-2)" id="right-btn" disabled>→</button>
+    </div>
+    <div class="row">
+      <button onclick="move(-2,0)" id="down-btn" disabled>↓</button>
+    </div>
+    <div class="row">
+      <button onclick="fullRound()" id="round-btn" disabled>Full Round</button>
+    </div>
+  </div>
+
+  <!-- JS -->
+  <script>
+    let server = window.location.origin; // automatically uses current host
+    let connected = false;
+
+    function setButtonState(state) {
+      document.querySelectorAll("#buttons button").forEach(b => b.disabled = !state);
+    }
+
+    function connect() {
+      const host = document.getElementById("host").value;
+      const port = document.getElementById("port").value;
+
+      fetch(server + "/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ host: host, port: port })
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.status === "connected") {
+          connected = true;
+          document.getElementById("status").innerText = "Connected ✅";
+          setButtonState(true);
+        } else {
+          connected = false;
+          document.getElementById("status").innerText = "Error: " + (d.message || "Unknown");
+          setButtonState(false);
+        }
+      })
+      .catch(err => {
+        connected = false;
+        document.getElementById("status").innerText = "Connection failed";
+        setButtonState(false);
+      });
+    }
+
+    function move(lin, ang) {
+      if (!connected) return;
+      fetch(server + "/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ linear: lin, angular: ang })
+      });
+    }
+
+    function stop() {
+      if (!connected) return;
+      fetch(server + "/stop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({})
+      });
+    }
+
+    function fullRound() {
+      if (!connected) return;
+      fetch(server + "/round", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({})
+      });
+    }
+
+    // Initially disable all buttons
+    setButtonState(false);
+  </script>
+
+</body>
+</html>
